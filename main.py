@@ -130,7 +130,7 @@ def initialize_tts():
         print("TTS functionality will be disabled")
         TTS_AVAILABLE = False
 
-def text_to_speech(text: str, max_length: int = 200, speed: float = 1.0) -> Optional[str]:
+def text_to_speech(text: str, max_length: int = 200, speed: float = 1.0, voice: str = "alloy", model: str = "tts-1") -> Optional[str]:
     """Convert text to speech using OpenAI TTS API and return base64 encoded audio"""
     try:        
         if not TTS_AVAILABLE:
@@ -144,10 +144,20 @@ def text_to_speech(text: str, max_length: int = 200, speed: float = 1.0) -> Opti
         # Clamp speed to OpenAI TTS supported range (0.25 to 4.0)
         speed = max(0.25, min(4.0, speed))
         
+        # Validate voice options
+        valid_voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+        if voice not in valid_voices:
+            voice = "alloy"  # fallback to default
+        
+        # Validate model options
+        valid_models = ["tts-1", "tts-1-hd"]
+        if model not in valid_models:
+            model = "tts-1"  # fallback to default
+        
         # Call OpenAI TTS API
         response = openai_tts_client.audio.speech.create(
-            model="tts-1",  # Use tts-1 for faster generation, tts-1-hd for higher quality
-            voice="alloy",  # Available voices: alloy, echo, fable, onyx, nova, shimmer
+            model=model,
+            voice=voice,
             input=text,
             speed=speed,
             response_format="mp3"  # MP3 is more efficient than wav
@@ -1021,7 +1031,9 @@ class ChatRequest(BaseModel):
     message: str = Field(..., description="User message")
     user_id: str = Field(..., description="User ID for multi-user support")
     conversation_id: Optional[str] = Field(None, description="Conversation ID for context")
-    speech_speed: float = Field(1.0, description="Speech speed multiplier (0.5-2.0, default: 1.0)")
+    speech_speed: float = Field(1.0, description="Speech speed multiplier (0.25-4.0, default: 1.0)")
+    voice: str = Field("alloy", description="Voice selection: alloy, echo, fable, onyx, nova, shimmer")
+    tts_model: str = Field("tts-1", description="TTS model: tts-1 (fast) or tts-1-hd (high quality)")
 
 class ChatResponse(BaseModel):
     response: str
@@ -1034,10 +1046,12 @@ class TTSRequest(BaseModel):
     text: str = Field(..., description="Text to convert to speech")
     speed: float = Field(1.0, description="Speech speed multiplier (0.25-4.0, default: 1.0)")
     max_length: int = Field(200, description="Maximum text length (default: 200)")
+    voice: str = Field("alloy", description="Voice selection: alloy, echo, fable, onyx, nova, shimmer")
+    model: str = Field("tts-1", description="TTS model: tts-1 (fast) or tts-1-hd (high quality)")
 
 # ===== MAIN PROCESSING FUNCTION =====
 
-async def process_chat_message_with_langchain(message: str, user_id: str, conversation_id: str, speech_speed: float = 1.0) -> tuple[str, List[Dict], Optional[str]]:
+async def process_chat_message_with_langchain(message: str, user_id: str, conversation_id: str, speech_speed: float = 1.0, voice: str = "alloy", tts_model: str = "tts-1") -> tuple[str, List[Dict], Optional[str]]:
     """Process a chat message using LangChain agent with persistent multi-user history"""
     
     try:
@@ -1087,7 +1101,7 @@ async def process_chat_message_with_langchain(message: str, user_id: str, conver
         conversation_manager.store_conversation(user_id, conversation_id, message, response, tool_calls)
         
         # Generate TTS audio with speed control
-        audio_base64 = text_to_speech(response, max_length=200, speed=speech_speed)
+        audio_base64 = text_to_speech(response, max_length=200, speed=speech_speed, voice=voice, model=tts_model)
         
         return response, tool_calls, audio_base64
     
@@ -1135,12 +1149,14 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str, conversation_id
             user_message = message_data.get("message", "")
             
             if user_message.strip():
-                # Get speech speed from message data
+                # Get TTS preferences from message data
                 speech_speed = message_data.get("speech_speed", 1.0)
+                voice = message_data.get("voice", "alloy")
+                tts_model = message_data.get("tts_model", "tts-1")
                 
                 # Process message with LangChain agent
                 response, tool_calls, audio_base64 = await process_chat_message_with_langchain(
-                    user_message, user_id, conversation_id, speech_speed
+                    user_message, user_id, conversation_id, speech_speed, voice, tts_model
                 )
                 
                 # Send response back to client in the format expected by frontend
@@ -1169,7 +1185,9 @@ async def chat_api(request: ChatRequest):
             request.message, 
             request.user_id,
             conversation_id, 
-            request.speech_speed
+            request.speech_speed,
+            request.voice,
+            request.tts_model
         )
         
         return ChatResponse(
@@ -1248,7 +1266,17 @@ async def generate_tts(request: TTSRequest):
         if request.speed < 0.25 or request.speed > 4.0:
             raise HTTPException(status_code=400, detail="Speed must be between 0.25 and 4.0")
         
-        audio_base64 = text_to_speech(request.text, request.max_length, request.speed)
+        # Validate voice parameter
+        valid_voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+        if request.voice not in valid_voices:
+            raise HTTPException(status_code=400, detail=f"Voice must be one of: {', '.join(valid_voices)}")
+        
+        # Validate model parameter
+        valid_models = ["tts-1", "tts-1-hd"]
+        if request.model not in valid_models:
+            raise HTTPException(status_code=400, detail=f"Model must be one of: {', '.join(valid_models)}")
+        
+        audio_base64 = text_to_speech(request.text, request.max_length, request.speed, request.voice, request.model)
         
         if audio_base64:
             return {"audio_base64": audio_base64, "text": request.text[:request.max_length]}

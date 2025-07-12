@@ -503,6 +503,70 @@
         min-width: 35px;
       }
 
+      .voice-control {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 8px 16px;
+        font-size: 14px;
+      }
+
+      .voice-control label {
+        font-weight: 500;
+        color: #64748b;
+        margin: 0;
+        white-space: nowrap;
+      }
+
+      .voice-control select {
+        padding: 4px 8px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 13px;
+        background: white;
+        color: #333;
+        font-weight: 500;
+      }
+
+      .tts-controls {
+        display: none;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #e2e8f0;
+        width: 100%;
+      }
+
+      .tts-controls.show {
+        display: flex;
+      }
+
+      .tts-toggle-btn {
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 8px 16px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        color: #64748b;
+      }
+
+      .tts-toggle-btn:hover {
+        background: #e2e8f0;
+      }
+
+      .tts-toggle-btn.active {
+        background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+        color: white;
+        border-color: #f59e0b;
+      }
+
       .chat-input-form {
         display: flex;
         gap: 15px;
@@ -659,9 +723,20 @@
           gap: 5px;
         }
 
-        .toggle-btn {
+        .toggle-btn,
+        .tts-toggle-btn {
           font-size: 12px;
           padding: 6px 12px;
+        }
+
+        .tts-controls {
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .speed-control,
+        .voice-control {
+          justify-content: space-between;
         }
       }
     </style>
@@ -785,10 +860,42 @@
           <button class="toggle-btn" id="knowledgeToggle" onclick="showKnowledgeSearch()">
             📚 Search Knowledge
           </button>
+          <button class="tts-toggle-btn" id="ttsControlsToggle" onclick="toggleTTSControls()">
+            ⚙️ Voice Settings
+          </button>
+        </div>
+        <div class="tts-controls" id="ttsControls">
           <div class="speed-control">
             <label for="speedSlider">🗣️ Speed:</label>
             <input type="range" id="speedSlider" min="0.25" max="4.0" step="0.25" value="1.0" />
             <span id="speedValue">1.0x</span>
+          </div>
+          <div class="voice-control">
+            <label for="voiceSelect">🎭 Voice:</label>
+            <select id="voiceSelect">
+              <option value="alloy">🎭 Alloy (Balanced, Neutral)</option>
+              <option value="echo">👨 Echo (Male, Clear)</option>
+              <option value="fable">👩 Fable (Female, Expressive)</option>
+              <option value="onyx">🎤 Onyx (Deep Male, Authoritative)</option>
+              <option value="nova">✨ Nova (Young Female, Energetic)</option>
+              <option value="shimmer">🌟 Shimmer (Soft Female, Gentle)</option>
+            </select>
+            <button
+              type="button"
+              id="voicePreview"
+              onclick="app.previewVoice()"
+              style="background: none; border: none; font-size: 16px; cursor: pointer; padding: 4px"
+              title="Preview voice"
+            >
+              🔊
+            </button>
+          </div>
+          <div class="voice-control">
+            <label for="modelSelect">⚡ Quality:</label>
+            <select id="modelSelect">
+              <option value="tts-1">Fast (Standard)</option>
+              <option value="tts-1-hd">HD (High Quality)</option>
+            </select>
           </div>
         </div>
         <form class="chat-input-form" id="chatForm">
@@ -816,6 +923,8 @@
           this.memoryEnabled = true;
           this.currentAudio = null;
           this.speechSpeed = 1.0; // Default speech speed
+          this.selectedVoice = "alloy"; // Default voice
+          this.selectedModel = "tts-1"; // Default TTS model
 
           this.initializeElements();
           this.setupEventListeners();
@@ -878,6 +987,8 @@
           this.memoryIndicator = document.getElementById("memoryIndicator");
           this.speedSlider = document.getElementById("speedSlider");
           this.speedValue = document.getElementById("speedValue");
+          this.voiceSelect = document.getElementById("voiceSelect");
+          this.modelSelect = document.getElementById("modelSelect");
         }
 
         setupEventListeners() {
@@ -901,6 +1012,17 @@
           this.speedSlider.addEventListener("input", (e) => {
             this.speechSpeed = parseFloat(e.target.value);
             this.speedValue.textContent = this.speechSpeed.toFixed(1) + "x";
+          });
+
+          // Voice selection event listeners
+          this.voiceSelect.addEventListener("change", (e) => {
+            this.selectedVoice = e.target.value;
+            console.log("Voice changed to:", this.selectedVoice);
+          });
+
+          this.modelSelect.addEventListener("change", (e) => {
+            this.selectedModel = e.target.value;
+            console.log("TTS model changed to:", this.selectedModel);
           });
         }
 
@@ -1013,6 +1135,8 @@
                 user_id: this.userId,
                 conversation_id: this.conversationId,
                 speech_speed: this.speechSpeed,
+                voice: this.selectedVoice,
+                tts_model: this.selectedModel,
               })
             );
           }
@@ -1109,6 +1233,8 @@
                 text: text,
                 speed: this.speechSpeed,
                 max_length: 200,
+                voice: this.selectedVoice,
+                model: this.selectedModel,
               }),
             });
 
@@ -1162,6 +1288,39 @@
             });
           } catch (error) {
             console.error("TTS playback error:", error);
+          }
+        }
+
+        async previewVoice() {
+          try {
+            const previewText = `Hello, I'm ${this.selectedVoice}. This is how I sound.`;
+
+            const response = await fetch("/api/tts", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                text: previewText,
+                speed: this.speechSpeed,
+                max_length: 200,
+                voice: this.selectedVoice,
+                model: this.selectedModel,
+              }),
+            });
+
+            if (!response.ok) {
+              throw new Error("Voice preview failed");
+            }
+
+            const data = await response.json();
+            if (data.audio_base64) {
+              // Create a temporary element for preview playback
+              const tempElement = document.createElement("div");
+              this.playTTS(data.audio_base64, tempElement);
+            }
+          } catch (error) {
+            console.error("Voice preview error:", error);
           }
         }
 
@@ -1435,6 +1594,21 @@
             toggle.classList.remove("active");
             toggle.textContent = "🧠 Memory Off";
           }
+        }
+      }
+
+      function toggleTTSControls() {
+        const ttsControls = document.getElementById("ttsControls");
+        const toggleButton = document.getElementById("ttsControlsToggle");
+
+        if (ttsControls.classList.contains("show")) {
+          ttsControls.classList.remove("show");
+          toggleButton.classList.remove("active");
+          toggleButton.textContent = "⚙️ Voice Settings";
+        } else {
+          ttsControls.classList.add("show");
+          toggleButton.classList.add("active");
+          toggleButton.textContent = "⚙️ Hide Settings";
         }
       }
 
