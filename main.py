@@ -78,7 +78,9 @@ openai_tts_client = OpenAI(
 )
 
 # ChromaDB Setup for Vector Storage
-chroma_client = chromadb.PersistentClient(path="./chroma_db")
+# Use environment variable for ChromaDB path or default to local directory
+chroma_db_path = os.getenv("CHROMA_DB_PATH", "./chroma_db")
+chroma_client = chromadb.PersistentClient(path=chroma_db_path)
 
 # Initialize OpenAI embedding function for ChromaDB
 openai_ef = embedding_functions.OpenAIEmbeddingFunction(
@@ -1375,15 +1377,23 @@ def start_server():
     print("💾 Persistent Storage: ChromaDB")
     print("👥 Multi-User Support: Enabled")
     print("🕐 Date Awareness: Enhanced")
-    print("💬 Chat Interface: http://localhost:8000")
-    print("📖 API Documentation: http://localhost:8000/docs")
-    print("🔧 Health Check: http://localhost:8000/health")
+    
+    # Get port from environment variable (Heroku sets this)
+    port = int(os.getenv("PORT", 8000))
+    
+    # Disable reload in production
+    reload = os.getenv("ENVIRONMENT", "development") == "development"
+    
+    if reload:
+        print("💬 Chat Interface: http://localhost:8000")
+        print("📖 API Documentation: http://localhost:8000/docs")
+        print("🔧 Health Check: http://localhost:8000/health")
     
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
-        reload=True
+        port=port,
+        reload=reload
     )
 
 if __name__ == "__main__":
