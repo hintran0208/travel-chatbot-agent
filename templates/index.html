@@ -1,0 +1,1485 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TravelBot - Your Enhanced AI Travel Assistant with LangChain</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .chat-container {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 1000px;
+        height: 90vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .chat-header {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 20px 25px;
+        text-align: center;
+        border-radius: 20px 20px 0 0;
+        position: relative;
+      }
+
+      .chat-header h1 {
+        font-size: 28px;
+        margin-bottom: 5px;
+        font-weight: 600;
+      }
+
+      .user-info {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        padding: 10px 15px;
+        margin: 10px 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .user-info input {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        padding: 8px 12px;
+        color: white;
+        width: 200px;
+      }
+
+      .user-info input::placeholder {
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .user-info button {
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        padding: 8px 15px;
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .user-info button:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+
+      .chat-header p {
+        font-size: 16px;
+        opacity: 0.9;
+      }
+
+      .feature-indicators {
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        display: flex;
+        gap: 10px;
+      }
+
+      .feature-indicator {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .feature-indicator.active {
+        background: rgba(255, 255, 255, 0.3);
+        transform: scale(1.1);
+      }
+
+      .feature-indicator:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+
+      .chat-messages {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .message {
+        max-width: 80%;
+        padding: 15px 18px;
+        border-radius: 18px;
+        word-wrap: break-word;
+        animation: slideIn 0.3s ease;
+        position: relative;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .message:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      .message.selected {
+        border: 2px solid #4facfe;
+        box-shadow: 0 0 10px rgba(79, 172, 254, 0.3);
+        transform: scale(1.02);
+      }
+
+      .user-message.selected {
+        border: 2px solid #ffffff;
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+      }
+
+      .message-controls {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        display: none;
+        gap: 5px;
+      }
+
+      .message:hover .message-controls {
+        display: flex;
+      }
+
+      .control-btn {
+        background: rgba(0, 0, 0, 0.1);
+        border: none;
+        border-radius: 50%;
+        width: 25px;
+        height: 25px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        transition: background 0.2s ease;
+      }
+
+      .control-btn:hover {
+        background: rgba(0, 0, 0, 0.2);
+      }
+
+      .user-message .control-btn {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .user-message .control-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+
+      .audio-playing {
+        animation: audioWave 1s infinite;
+      }
+
+      @keyframes audioWave {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.1);
+        }
+      }
+
+      .export-controls {
+        background: white;
+        padding: 15px 20px;
+        border-top: 1px solid #e2e8f0;
+        border-radius: 0;
+        display: none;
+        position: relative;
+      }
+
+      .export-controls.show {
+        display: block;
+      }
+
+      .export-buttons {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .export-btn {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: transform 0.2s ease;
+      }
+
+      .export-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      }
+
+      .export-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .user-message {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        align-self: flex-end;
+        margin-left: auto;
+      }
+
+      .bot-message {
+        background: white;
+        color: #333;
+        align-self: flex-start;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+
+      /* Enhanced message styling */
+      .message h1 {
+        font-size: 1.5em;
+        margin: 0.5em 0 0.3em 0;
+        color: #2d3748;
+        font-weight: 600;
+      }
+
+      .message h2 {
+        font-size: 1.3em;
+        margin: 0.4em 0 0.25em 0;
+        color: #2d3748;
+        font-weight: 600;
+      }
+
+      .message h3 {
+        font-size: 1.1em;
+        margin: 0.3em 0 0.2em 0;
+        color: #2d3748;
+        font-weight: 600;
+      }
+
+      .message h4 {
+        font-size: 1em;
+        margin: 0.25em 0 0.15em 0;
+        color: #2d3748;
+        font-weight: 600;
+      }
+
+      .user-message h1,
+      .user-message h2,
+      .user-message h3,
+      .user-message h4 {
+        color: white;
+      }
+
+      .message code {
+        background: #f7fafc;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: "Courier New", monospace;
+        font-size: 0.9em;
+      }
+
+      .user-message code {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .typing-indicator {
+        display: none;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        align-self: center;
+        border: none;
+        border-radius: 15px;
+        padding: 8px 14px;
+        font-weight: 500;
+        font-size: 12px;
+        box-shadow: 0 2px 6px rgba(102, 126, 234, 0.2);
+        position: relative;
+        overflow: hidden;
+        max-width: 150px;
+        margin: 8px auto;
+        animation: fadeInUp 0.3s ease;
+      }
+
+      .typing-indicator::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+        animation: shimmer 1.5s infinite;
+      }
+
+      .typing-content {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        justify-content: center;
+      }
+
+      .typing-text {
+        font-size: 11px;
+        opacity: 0.9;
+      }
+
+      .typing-dots {
+        display: flex;
+        gap: 2px;
+      }
+
+      .typing-dots span {
+        width: 3px;
+        height: 3px;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 50%;
+        animation: typingDots 1.2s infinite ease-in-out;
+      }
+
+      .typing-dots span:nth-child(1) {
+        animation-delay: 0s;
+      }
+
+      .typing-dots span:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+
+      .typing-dots span:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+
+      @keyframes typingDots {
+        0%,
+        60%,
+        100% {
+          transform: scale(0.8);
+          opacity: 0.5;
+        }
+        30% {
+          transform: scale(1.2);
+          opacity: 1;
+        }
+      }
+
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes shimmer {
+        0% {
+          left: -100%;
+        }
+        100% {
+          left: 100%;
+        }
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 0.7;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+
+      .function-call-indicator {
+        background: #e6f3ff;
+        color: #0066cc;
+        font-size: 14px;
+        padding: 10px 15px;
+        border-radius: 15px;
+        margin: 5px 0;
+        border-left: 4px solid #0066cc;
+      }
+
+      .memory-indicator {
+        background: #f0f9ff;
+        color: #0369a1;
+        font-size: 12px;
+        padding: 8px 12px;
+        border-radius: 12px;
+        margin: 5px 0;
+        border-left: 3px solid #0369a1;
+        font-style: italic;
+      }
+
+      .chat-input-container {
+        padding: 20px 25px;
+        background: white;
+        border-top: 1px solid #e2e8f0;
+        border-radius: 0 0 20px 20px;
+      }
+
+      .input-controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+        align-items: center;
+      }
+
+      .toggle-btn {
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 8px 16px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s ease;
+      }
+
+      .toggle-btn.active {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        border-color: #4facfe;
+      }
+
+      .speed-control {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 8px 16px;
+        font-size: 14px;
+      }
+
+      .speed-control label {
+        font-weight: 500;
+        color: #64748b;
+        margin: 0;
+      }
+
+      .speed-control input[type="range"] {
+        width: 80px;
+        margin: 0 5px;
+      }
+
+      .speed-control #speedValue {
+        font-weight: 600;
+        color: #1e293b;
+        min-width: 35px;
+      }
+
+      .chat-input-form {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+      }
+
+      .chat-input {
+        flex: 1;
+        padding: 15px 20px;
+        border: 2px solid #e2e8f0;
+        border-radius: 25px;
+        font-size: 16px;
+        outline: none;
+        transition: border-color 0.3s ease;
+        resize: none;
+        min-height: 50px;
+        max-height: 120px;
+        font-family: inherit;
+      }
+
+      .chat-input:focus {
+        border-color: #4facfe;
+      }
+
+      .send-button {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+      }
+
+      .send-button:hover {
+        transform: scale(1.1);
+      }
+
+      .send-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .welcome-message {
+        text-align: center;
+        color: #666;
+        font-style: italic;
+        margin: 20px 0;
+        padding: 20px;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        background: -webkit-linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        border-radius: 15px;
+      }
+
+      .suggested-prompts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 15px;
+        justify-content: center;
+      }
+
+      .prompt-button {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        padding: 8px 15px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s ease;
+      }
+
+      .prompt-button:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+      }
+
+      .connection-status {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 10px 15px;
+        border-radius: 20px;
+        color: white;
+        font-size: 14px;
+        z-index: 1000;
+      }
+
+      .connected {
+        background: #10b981;
+      }
+
+      .disconnected {
+        background: #ef4444;
+      }
+
+      /* Responsive design */
+      @media (max-width: 768px) {
+        body {
+          padding: 10px;
+        }
+
+        .chat-container {
+          height: 90vh;
+          border-radius: 15px;
+        }
+
+        .chat-header {
+          padding: 15px 20px;
+          border-radius: 15px 15px 0 0;
+        }
+
+        .chat-header h1 {
+          font-size: 24px;
+        }
+
+        .feature-indicators {
+          position: static;
+          justify-content: center;
+          margin-top: 10px;
+        }
+
+        .message {
+          max-width: 90%;
+          padding: 12px 15px;
+        }
+
+        .chat-input-container {
+          padding: 15px 20px;
+          border-radius: 0 0 15px 15px;
+        }
+
+        .suggested-prompts {
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .prompt-button {
+          width: 100%;
+          max-width: 300px;
+          text-align: center;
+        }
+
+        .input-controls {
+          flex-wrap: wrap;
+          gap: 5px;
+        }
+
+        .toggle-btn {
+          font-size: 12px;
+          padding: 6px 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="connection-status disconnected" id="connectionStatus">🔌 Connecting...</div>
+
+    <div class="chat-container">
+      <div class="chat-header">
+        <div class="feature-indicators">
+          <div class="feature-indicator" id="ttsIndicator" title="Text-to-Speech">🔊</div>
+          <div class="feature-indicator" id="memoryIndicator" title="Memory & Context">🧠</div>
+          <div class="feature-indicator active" id="aiIndicator" title="AI Assistant">🤖</div>
+          <div class="feature-indicator" id="langchainIndicator" title="LangChain Agents">🔗</div>
+        </div>
+        <h1>🧳 Enhanced TravelBot with LangChain</h1>
+        <p>
+          AI-powered travel assistant with LangChain agents, persistent memory and multi-user
+          support
+        </p>
+
+        <div class="user-info">
+          <div>
+            <input type="text" id="userIdInput" placeholder="Enter your User ID" value="user_001" />
+            <button onclick="setUserId()">Set User ID</button>
+          </div>
+          <div style="color: rgba(255, 255, 255, 0.8); font-size: 14px">
+            User: <span id="currentUserId">user_001</span> | Session:
+            <span id="currentConversationId">New</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-messages" id="chatMessages">
+        <div class="welcome-message">
+          <h3>✈️ Welcome to Enhanced TravelBot! ✈️</h3>
+          <p>
+            I'm your enhanced personal travel assistant with memory and voice capabilities! I can
+            search for hotels, find flights, check weather, suggest activities, convert currencies
+            including Vietnamese Dong (VND), and I remember our conversations to provide
+            personalized recommendations.
+          </p>
+          <p style="margin-top: 10px; font-size: 14px; opacity: 0.9">
+            🧠 <strong>Memory:</strong> I remember your preferences and past conversations<br />
+            🔊 <strong>Voice:</strong> I can speak my responses aloud<br />
+            📚 <strong>Knowledge:</strong> I have access to extensive travel information
+          </p>
+
+          <div class="suggested-prompts">
+            <button
+              class="prompt-button"
+              onclick="sendSuggestedMessage('Find me a hotel in Paris for next weekend')"
+            >
+              🏨 Find hotels in Paris
+            </button>
+            <button
+              class="prompt-button"
+              onclick="sendSuggestedMessage('Search flights from New York to Tokyo departing December 15th')"
+            >
+              ✈️ Search flights to Tokyo
+            </button>
+            <button
+              class="prompt-button"
+              onclick="sendSuggestedMessage('What\'s the weather like in London next week?')"
+            >
+              🌤️ Check London weather
+            </button>
+            <button
+              class="prompt-button"
+              onclick="sendSuggestedMessage('Suggest activities in Barcelona')"
+            >
+              🎭 Barcelona activities
+            </button>
+            <button
+              class="prompt-button"
+              onclick="sendSuggestedMessage('Convert 1000 USD to Vietnamese Dong')"
+            >
+              💱 Convert USD to VND
+            </button>
+            <button
+              class="prompt-button"
+              onclick="sendSuggestedMessage('Plan a 3-day trip to Rome based on my preferences')"
+            >
+              📋 Plan Rome itinerary
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="typing-indicator" id="typingIndicator">
+        <div class="typing-content">
+          <span class="typing-text">TravelBot is thinking</span>
+          <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-controls" id="exportControls">
+        <div class="selected-count" id="selectedCount">0 messages selected</div>
+        <div class="export-buttons">
+          <button class="export-btn" onclick="exportSelected('excel')" id="exportExcelBtn">
+            📊 Export to Excel
+          </button>
+          <button class="export-btn" onclick="exportSelected('txt')" id="exportTxtBtn">
+            📄 Export to TXT
+          </button>
+        </div>
+      </div>
+
+      <div class="chat-input-container">
+        <div class="input-controls">
+          <button class="toggle-btn active" id="ttsToggle" onclick="toggleTTS()">
+            🔊 Voice Response
+          </button>
+          <button class="toggle-btn active" id="memoryToggle" onclick="toggleMemory()">
+            🧠 Use Memory
+          </button>
+          <button class="toggle-btn" id="knowledgeToggle" onclick="showKnowledgeSearch()">
+            📚 Search Knowledge
+          </button>
+          <div class="speed-control">
+            <label for="speedSlider">🗣️ Speed:</label>
+            <input type="range" id="speedSlider" min="0.25" max="4.0" step="0.25" value="1.0" />
+            <span id="speedValue">1.0x</span>
+          </div>
+        </div>
+        <form class="chat-input-form" id="chatForm">
+          <textarea
+            class="chat-input"
+            id="messageInput"
+            placeholder="Ask me about hotels, flights, weather, or activities..."
+            rows="1"
+            required
+          ></textarea>
+          <button type="submit" class="send-button" id="sendButton">➤</button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      class TravelChatbot {
+        constructor() {
+          this.userId = "user_001"; // Default user ID
+          this.conversationId = this.generateConversationId();
+          this.socket = null;
+          this.isConnected = false;
+          this.messages = []; // Store all messages for export
+          this.ttsEnabled = true;
+          this.memoryEnabled = true;
+          this.currentAudio = null;
+          this.speechSpeed = 1.0; // Default speech speed
+
+          this.initializeElements();
+          this.setupEventListeners();
+          this.connectWebSocket();
+          this.checkSystemCapabilities();
+          this.updateUserDisplay();
+        }
+
+        generateConversationId() {
+          return "conv_" + Math.random().toString(36).substr(2, 9) + "_" + Date.now();
+        }
+
+        updateUserDisplay() {
+          document.getElementById("currentUserId").textContent = this.userId;
+          document.getElementById("currentConversationId").textContent =
+            this.conversationId.substr(5, 8) + "...";
+        }
+
+        setUserId(newUserId) {
+          if (newUserId && newUserId.trim()) {
+            this.userId = newUserId.trim();
+            this.conversationId = this.generateConversationId(); // New conversation for new user
+            this.updateUserDisplay();
+
+            // Reconnect WebSocket with new user
+            this.disconnectWebSocket();
+            this.connectWebSocket();
+
+            // Clear current chat for new user
+            this.clearChat();
+
+            this.addMessage(
+              "system",
+              `Switched to user: ${this.userId}. Starting a new conversation.`
+            );
+          }
+        }
+
+        clearChat() {
+          const welcomeMessage = this.chatMessages.querySelector(".welcome-message");
+          this.chatMessages.innerHTML = "";
+          if (welcomeMessage) {
+            this.chatMessages.appendChild(welcomeMessage);
+          }
+          this.messages = [];
+        }
+
+        initializeElements() {
+          this.chatMessages = document.getElementById("chatMessages");
+          this.messageInput = document.getElementById("messageInput");
+          this.chatForm = document.getElementById("chatForm");
+          this.sendButton = document.getElementById("sendButton");
+          this.typingIndicator = document.getElementById("typingIndicator");
+          this.connectionStatus = document.getElementById("connectionStatus");
+          this.exportControls = document.getElementById("exportControls");
+          this.selectedCount = document.getElementById("selectedCount");
+          this.ttsToggle = document.getElementById("ttsToggle");
+          this.memoryToggle = document.getElementById("memoryToggle");
+          this.ttsIndicator = document.getElementById("ttsIndicator");
+          this.memoryIndicator = document.getElementById("memoryIndicator");
+          this.speedSlider = document.getElementById("speedSlider");
+          this.speedValue = document.getElementById("speedValue");
+        }
+
+        setupEventListeners() {
+          this.chatForm.addEventListener("submit", (e) => this.handleSubmit(e));
+
+          // Auto-resize textarea
+          this.messageInput.addEventListener("input", () => {
+            this.messageInput.style.height = "auto";
+            this.messageInput.style.height = Math.min(this.messageInput.scrollHeight, 120) + "px";
+          });
+
+          // Enter to send, Shift+Enter for new line
+          this.messageInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              this.chatForm.dispatchEvent(new Event("submit"));
+            }
+          });
+
+          // Speed slider event listener
+          this.speedSlider.addEventListener("input", (e) => {
+            this.speechSpeed = parseFloat(e.target.value);
+            this.speedValue.textContent = this.speechSpeed.toFixed(1) + "x";
+          });
+        }
+
+        async checkSystemCapabilities() {
+          try {
+            const response = await fetch("/api/stats");
+            const data = await response.json();
+
+            // Update TTS status
+            if (data.tts_available) {
+              this.ttsIndicator.classList.add("active");
+            } else {
+              this.ttsIndicator.classList.remove("active");
+              this.ttsEnabled = false;
+              this.ttsToggle.classList.remove("active");
+              this.ttsToggle.textContent = "🔇 Voice Disabled";
+            }
+
+            // Update memory status
+            if (data.knowledge_base_entries > 0) {
+              this.memoryIndicator.classList.add("active");
+            } else {
+              this.memoryIndicator.classList.remove("active");
+            }
+
+            console.log("System capabilities:", data);
+          } catch (error) {
+            console.error("Error checking capabilities:", error);
+          }
+        }
+
+        connectWebSocket() {
+          const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+          const wsUrl = `${protocol}//${window.location.host}/ws/${this.userId}/${this.conversationId}`;
+
+          this.socket = new WebSocket(wsUrl);
+
+          this.socket.onopen = () => {
+            this.isConnected = true;
+            this.updateConnectionStatus(true);
+            console.log("🔗 Connected to Enhanced TravelBot");
+          };
+
+          this.socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            this.handleBotResponse(data);
+          };
+
+          this.socket.onclose = () => {
+            this.isConnected = false;
+            this.updateConnectionStatus(false);
+            console.log("🔌 Disconnected from Enhanced TravelBot");
+
+            // Attempt to reconnect after 3 seconds
+            setTimeout(() => this.connectWebSocket(), 3000);
+          };
+
+          this.socket.onerror = (error) => {
+            console.error("❌ WebSocket error:", error);
+            this.isConnected = false;
+            this.updateConnectionStatus(false);
+          };
+        }
+
+        disconnectWebSocket() {
+          if (this.socket) {
+            this.socket.close();
+            this.socket = null;
+            this.isConnected = false;
+            this.updateConnectionStatus(false);
+          }
+        }
+
+        updateConnectionStatus(connected) {
+          if (connected) {
+            this.connectionStatus.textContent = "🟢 Connected";
+            this.connectionStatus.className = "connection-status connected";
+          } else {
+            this.connectionStatus.textContent = "🔴 Disconnected";
+            this.connectionStatus.className = "connection-status disconnected";
+          }
+        }
+
+        handleSubmit(e) {
+          e.preventDefault();
+
+          const message = this.messageInput.value.trim();
+          if (!message || !this.isConnected) return;
+
+          this.sendMessage(message);
+          this.messageInput.value = "";
+          this.messageInput.style.height = "auto";
+        }
+
+        sendMessage(message) {
+          // Display user message
+          this.addMessage(message, "user");
+
+          // Show typing indicator
+          this.showTypingIndicator();
+
+          // Disable send button
+          this.sendButton.disabled = true;
+
+          // Send message via WebSocket
+          if (this.socket && this.isConnected) {
+            this.socket.send(
+              JSON.stringify({
+                message: message,
+                user_id: this.userId,
+                conversation_id: this.conversationId,
+                speech_speed: this.speechSpeed,
+              })
+            );
+          }
+        }
+
+        handleBotResponse(data) {
+          this.hideTypingIndicator();
+          this.sendButton.disabled = false;
+
+          if (data.type === "response") {
+            // Show consolidated function calls summary if any
+            if (data.function_calls && data.function_calls.length > 0) {
+              this.addConsolidatedFunctionCallIndicator(data.function_calls);
+            }
+
+            // Add bot response
+            const messageElement = this.addMessage(data.content, "bot");
+
+            // Play TTS if enabled and available
+            if (this.ttsEnabled && data.audio_base64) {
+              this.playTTS(data.audio_base64, messageElement);
+            }
+
+            // Show memory indicator if conversation history was used
+            if (
+              data.function_calls &&
+              data.function_calls.some(
+                (call) => (call.tool || call.function) === "get_relevant_conversation_history"
+              )
+            ) {
+              this.addMemoryIndicator("Used conversation history to personalize response");
+            }
+          }
+        }
+
+        addMessage(content, sender) {
+          const messageDiv = document.createElement("div");
+          messageDiv.className = `message ${sender}-message`;
+
+          // Add message controls
+          const controlsDiv = document.createElement("div");
+          controlsDiv.className = "message-controls";
+
+          if (sender === "bot") {
+            // Add TTS control for bot messages
+            const ttsBtn = document.createElement("button");
+            ttsBtn.className = "control-btn";
+            ttsBtn.innerHTML = "🔊";
+            ttsBtn.title = "Play audio";
+            ttsBtn.onclick = () => this.playMessageTTS(content, messageDiv);
+            controlsDiv.appendChild(ttsBtn);
+          }
+
+          messageDiv.appendChild(controlsDiv);
+
+          // Convert markdown-like formatting to HTML
+          const formattedContent = this.formatMessage(content);
+          messageDiv.innerHTML = controlsDiv.outerHTML + formattedContent;
+
+          // Store message data for export
+          const messageData = {
+            role: sender,
+            content: content,
+            timestamp: new Date().toISOString(),
+          };
+
+          // Attach message data to the message element
+          messageDiv.setAttribute("data-message", JSON.stringify(messageData));
+          messageDiv.setAttribute("data-selected", "false");
+
+          // Add click event listener for selection
+          messageDiv.addEventListener("click", (e) => {
+            // Don't select if clicking on controls
+            if (!e.target.closest(".message-controls")) {
+              this.toggleMessageSelection(messageDiv);
+            }
+          });
+
+          this.chatMessages.appendChild(messageDiv);
+          this.messages.push(messageData);
+          this.scrollToBottom();
+
+          return messageDiv;
+        }
+
+        async playMessageTTS(text, messageElement) {
+          try {
+            const response = await fetch("/api/tts", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                text: text,
+                speed: this.speechSpeed,
+                max_length: 200,
+              }),
+            });
+
+            if (!response.ok) {
+              throw new Error("TTS request failed");
+            }
+
+            const data = await response.json();
+            if (data.audio_base64) {
+              this.playTTS(data.audio_base64, messageElement);
+            }
+          } catch (error) {
+            console.error("TTS error:", error);
+          }
+        }
+
+        playTTS(audioBase64, messageElement) {
+          try {
+            // Stop current audio if playing
+            if (this.currentAudio) {
+              this.currentAudio.pause();
+              this.currentAudio = null;
+            }
+
+            // Create audio element (OpenAI TTS returns MP3)
+            const audio = new Audio(`data:audio/mp3;base64,${audioBase64}`);
+            this.currentAudio = audio;
+
+            // Add visual feedback
+            messageElement.classList.add("audio-playing");
+
+            audio.onplay = () => {
+              console.log("🔊 Playing TTS audio");
+            };
+
+            audio.onended = () => {
+              messageElement.classList.remove("audio-playing");
+              this.currentAudio = null;
+            };
+
+            audio.onerror = (error) => {
+              console.error("Audio playback error:", error);
+              messageElement.classList.remove("audio-playing");
+              this.currentAudio = null;
+            };
+
+            // Play the audio
+            audio.play().catch((error) => {
+              console.error("Error playing audio:", error);
+              messageElement.classList.remove("audio-playing");
+            });
+          } catch (error) {
+            console.error("TTS playback error:", error);
+          }
+        }
+
+        addConsolidatedFunctionCallIndicator(functionCalls) {
+          // Filter out weather calls and count meaningful operations
+          const meaningfulCalls = functionCalls.filter((call) => {
+            const functionName = call.tool || call.function;
+            return (
+              functionName &&
+              functionName !== "get_weather" &&
+              functionName !== "get_current_date_time"
+            );
+          });
+
+          if (meaningfulCalls.length === 0) return;
+
+          const indicatorDiv = document.createElement("div");
+          indicatorDiv.className = "function-call-indicator";
+
+          let description = "🔍 ";
+
+          if (meaningfulCalls.length === 1) {
+            const call = meaningfulCalls[0];
+            const functionName = call.tool || call.function;
+            const args = call.arguments || {};
+
+            switch (functionName) {
+              case "search_hotels":
+                description += `Found hotels in ${args.destination}`;
+                break;
+              case "search_flights":
+                description += `Found flights from ${args.origin} to ${args.destination}`;
+                break;
+              case "get_local_activities":
+                description += `Found activities in ${args.destination}`;
+                break;
+              case "exchange_currency":
+                description += `Converted ${args.amount} ${args.from_currency} to ${args.to_currency}`;
+                break;
+              default:
+                description += `Completed ${functionName}`;
+            }
+          } else {
+            description += `Completed ${meaningfulCalls.length} searches`;
+          }
+
+          indicatorDiv.textContent = description;
+          this.chatMessages.appendChild(indicatorDiv);
+          this.scrollToBottom();
+        }
+
+        addFunctionCallIndicator(functionCall) {
+          const indicatorDiv = document.createElement("div");
+          indicatorDiv.className = "function-call-indicator";
+
+          const functionName = functionCall.tool || functionCall.function;
+          const args = functionCall.arguments || {};
+
+          // Handle undefined function names
+          if (!functionName) {
+            console.warn("Function call with undefined tool name:", functionCall);
+            indicatorDiv.textContent = "🔧 Calling unknown tool...";
+            this.chatMessages.appendChild(indicatorDiv);
+            this.scrollToBottom();
+            return;
+          }
+
+          let description = "";
+          switch (functionName) {
+            case "get_current_date_time":
+              description = `📅 Getting current date and time...`;
+              break;
+            case "search_hotels":
+              description = `🏨 Searching hotels in ${args.destination}...`;
+              break;
+            case "search_flights":
+              description = `✈️ Finding flights from ${args.origin} to ${args.destination}...`;
+              break;
+            case "get_weather":
+              // Don't show weather checking indicator in UI
+              return;
+            case "get_local_activities":
+              description = `🎭 Looking up activities in ${args.destination}...`;
+              break;
+            case "exchange_currency":
+              description = `💱 Converting ${args.amount} ${args.from_currency} to ${args.to_currency}...`;
+              break;
+            default:
+              description = `🔧 Calling ${functionName}...`;
+          }
+
+          indicatorDiv.textContent = description;
+          this.chatMessages.appendChild(indicatorDiv);
+          this.scrollToBottom();
+        }
+
+        addMemoryIndicator(message) {
+          const indicatorDiv = document.createElement("div");
+          indicatorDiv.className = "memory-indicator";
+          indicatorDiv.textContent = `🧠 ${message}`;
+          this.chatMessages.appendChild(indicatorDiv);
+          this.scrollToBottom();
+        }
+
+        formatMessage(content) {
+          // Convert markdown-like formatting to HTML
+          return content
+            .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // Bold
+            .replace(/\*(.*?)\*/g, "<em>$1</em>") // Italic
+            .replace(/`(.*?)`/g, "<code>$1</code>") // Code
+            .replace(/^#### (.*$)/gm, "<h4>$1</h4>") // H4 Headers
+            .replace(/^### (.*$)/gm, "<h3>$1</h3>") // H3 Headers
+            .replace(/^## (.*$)/gm, "<h2>$1</h2>") // H2 Headers
+            .replace(/^# (.*$)/gm, "<h1>$1</h1>") // H1 Headers
+            .replace(/\n/g, "<br>") // Line breaks
+            .replace(/^- (.*$)/gm, "• $1"); // Bullet points
+        }
+
+        showTypingIndicator() {
+          this.typingIndicator.style.display = "block";
+          this.scrollToBottom();
+        }
+
+        hideTypingIndicator() {
+          this.typingIndicator.style.display = "none";
+        }
+
+        scrollToBottom() {
+          this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+        }
+
+        toggleMessageSelection(messageElement) {
+          const isSelected = messageElement.getAttribute("data-selected") === "true";
+
+          if (isSelected) {
+            messageElement.classList.remove("selected");
+            messageElement.setAttribute("data-selected", "false");
+          } else {
+            messageElement.classList.add("selected");
+            messageElement.setAttribute("data-selected", "true");
+          }
+
+          this.updateExportControls();
+        }
+
+        updateExportControls() {
+          const selectedMessages = this.chatMessages.querySelectorAll(
+            '.message[data-selected="true"]'
+          );
+
+          if (selectedMessages.length > 0) {
+            this.exportControls.classList.add("show");
+            this.selectedCount.textContent = `${selectedMessages.length} message${
+              selectedMessages.length > 1 ? "s" : ""
+            } selected`;
+          } else {
+            this.exportControls.classList.remove("show");
+          }
+        }
+
+        getSelectedMessages() {
+          const selectedMessages = [];
+          const selectedElements = this.chatMessages.querySelectorAll(
+            '.message[data-selected="true"]'
+          );
+
+          selectedElements.forEach((messageElement) => {
+            const messageData = JSON.parse(messageElement.getAttribute("data-message"));
+            selectedMessages.push(messageData);
+          });
+
+          return selectedMessages;
+        }
+
+        async exportMessages(format) {
+          const selectedMessages = this.getSelectedMessages();
+
+          if (selectedMessages.length === 0) {
+            alert("Please select at least one message to export.");
+            return;
+          }
+
+          try {
+            const response = await fetch("/api/export", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                messages: selectedMessages,
+                format: format,
+              }),
+            });
+
+            if (!response.ok) {
+              throw new Error(`Export failed: ${response.statusText}`);
+            }
+
+            // Get filename from response headers or generate default
+            const contentDisposition = response.headers.get("Content-Disposition");
+            let filename = `chat_export_${new Date()
+              .toISOString()
+              .slice(0, 19)
+              .replace(/:/g, "-")}.${format === "excel" ? "xlsx" : "txt"}`;
+
+            if (contentDisposition) {
+              const filenameMatch = contentDisposition.match(/filename=(.+)/);
+              if (filenameMatch) {
+                filename = filenameMatch[1].replace(/"/g, "");
+              }
+            }
+
+            // Create blob and download
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            console.log(
+              `✅ Exported ${selectedMessages.length} messages to ${format.toUpperCase()}`
+            );
+          } catch (error) {
+            console.error("Export error:", error);
+            alert(`Failed to export messages: ${error.message}`);
+          }
+        }
+      }
+
+      // Global functions
+      function sendSuggestedMessage(message) {
+        if (window.chatbot) {
+          window.chatbot.sendMessage(message);
+        }
+      }
+
+      function exportSelected(format) {
+        if (window.chatbot) {
+          window.chatbot.exportMessages(format);
+        }
+      }
+
+      function toggleTTS() {
+        if (window.chatbot) {
+          window.chatbot.ttsEnabled = !window.chatbot.ttsEnabled;
+          const toggle = document.getElementById("ttsToggle");
+
+          if (window.chatbot.ttsEnabled) {
+            toggle.classList.add("active");
+            toggle.textContent = "🔊 Voice Response";
+          } else {
+            toggle.classList.remove("active");
+            toggle.textContent = "🔇 Voice Disabled";
+          }
+        }
+      }
+
+      function toggleMemory() {
+        if (window.chatbot) {
+          window.chatbot.memoryEnabled = !window.chatbot.memoryEnabled;
+          const toggle = document.getElementById("memoryToggle");
+
+          if (window.chatbot.memoryEnabled) {
+            toggle.classList.add("active");
+            toggle.textContent = "🧠 Use Memory";
+          } else {
+            toggle.classList.remove("active");
+            toggle.textContent = "🧠 Memory Off";
+          }
+        }
+      }
+
+      function showKnowledgeSearch() {
+        const query = prompt("Search travel knowledge base:");
+        if (query) {
+          fetch(`/api/knowledge/search?query=${encodeURIComponent(query)}`)
+            .then((response) => response.json())
+            .then((data) => {
+              let message = `Knowledge search results for "${query}":\n\n`;
+              if (data.results.length > 0) {
+                data.results.forEach((result, index) => {
+                  message += `${index + 1}. **${result.title}** (${result.category})\n`;
+                  message += `   ${result.content}\n\n`;
+                });
+              } else {
+                message += "No results found.";
+              }
+
+              if (window.chatbot) {
+                window.chatbot.addMessage(message, "bot");
+              }
+            })
+            .catch((error) => {
+              console.error("Knowledge search error:", error);
+              alert("Failed to search knowledge base.");
+            });
+        }
+      }
+
+      // Global functions for HTML elements
+      function setUserId() {
+        const userIdInput = document.getElementById("userIdInput");
+        const newUserId = userIdInput.value.trim();
+        if (newUserId && window.chatbot) {
+          window.chatbot.setUserId(newUserId);
+        } else {
+          alert("Please enter a valid User ID");
+        }
+      }
+
+      // Initialize chatbot when page loads
+      document.addEventListener("DOMContentLoaded", () => {
+        window.chatbot = new TravelChatbot();
+      });
+    </script>
+  </body>
+</html>
